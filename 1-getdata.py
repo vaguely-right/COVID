@@ -28,7 +28,3 @@ us.drop(['American Samoa','Diamond Princess','Grand Princess','Guam','Northern M
 us.replace(0,np.nan,inplace=True)
 
 
-#%%
-#%% Get deaths data instead
-#%%
-
