@@ -22,9 +22,9 @@ list2 = list(us.max().index[us.gt(90).sum().ge(can.Alberta.gt(90).sum())])
 states = list2
 us[states].max().sort_values(ascending=False)
 
-#%% Reframe the dataframes as days since 100th case
-wrld = hundo(wrld,countries)
-can = hundo(can,provinces)
-us = hundo(us,states)
+#%% Reframe the dataframes as days since 100th case (actually 90th)
+wrld = hundo(wrld,countries,90)
+can = hundo(can,provinces,90)
+us = hundo(us,states,90)
 
 

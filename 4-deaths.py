@@ -54,11 +54,13 @@ states = list(set(list1+list2))
 us[states].max().sort_values(ascending=False)
 
 #%% Reframe the dataframes as days since 100th death
-wrld = hundo(wrld,countries)
-us = hundo(us,states)
+wrld = hundo(wrld,countries,90)
+can = hundo(can,provinces,20)
+us = hundo(us,states,90)
 
 #%% Calculate the five-day smoothed first derivative
 wrldd1 = getd1(wrld,5)
+cand1 = getd1(can,2)
 usd1 = getd1(us,5)
 pd.concat([wrldd1,usd1],axis=1).plot_bokeh(figsize=(1200,800),xlim=(4,30))
 
@@ -74,6 +76,16 @@ plt.xscale('Log')
 
 stacked.plot_bokeh.scatter(x='Deaths',y='Rate',category='Country',logx=True,figsize=(1200,800))
 
+#%% Plot the US data as deaths vs growth rate
+s1 = us.stack().to_frame().rename(columns={0:'Deaths'})
+s2 = usd1.stack().to_frame().rename(columns={0:'Rate'})
+stacked = pd.concat([s1,s2],axis=1).reset_index()
+stacked.columns= ['Days','States','Deaths','Rate']
+
+sns.lineplot(data=stacked,x='Deaths',y='Rate',hue='States')
+plt.xscale('Log')
+
+stacked.plot_bokeh.scatter(x='Deaths',y='Rate',category='States',logx=True,figsize=(1200,800))
 
 
 

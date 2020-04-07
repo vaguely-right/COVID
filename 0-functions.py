@@ -34,10 +34,10 @@ def rsq(x,y):
     return r
 
 # Convert a dataframe to days since 100th case (90th)
-def hundo(df,cols):
+def hundo(df,cols,ncases):
     frames = []
     for c in cols:
-        frames.append(df[df[c]>=90].reset_index()[c].to_frame())
+        frames.append(df[df[c]>=ncases].reset_index()[c].to_frame())
     h = pd.concat(frames,axis=1)
     h = h[h.max().sort_values(ascending=False).index]
     return h
