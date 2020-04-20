@@ -46,11 +46,11 @@ can[provinces].max().sort_values(ascending=False)
 us.max().sort_values(ascending=False)
 us.gt(90).sum().sort_values(ascending=False)
 
-list1 = list(us.max().index[us.gt(wrld.Canada.max()).sum().gt(0)])
+list1 = list(us.max().index[us.gt(wrld.Canada.max()*0.5).sum().gt(0)])
 list2 = list(us.max().index[us.gt(20).sum().ge(wrld.Canada.gt(20).sum())])
 
 #
-states = list(set(list1+list2))
+states = list(set(list1+list2+list3))
 us[states].max().sort_values(ascending=False)
 
 #%% Reframe the dataframes as days since 100th death

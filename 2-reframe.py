@@ -3,6 +3,7 @@ ndays = wrld.Canada.gt(90).sum()+4
 countries = list(wrld.max().index[wrld.gt(90).sum()>=ndays])
 countries.append('Canada')
 countries.remove('World')
+countries.remove('China')
 
 wrld[countries].max().sort_values(ascending=False)
 
@@ -28,3 +29,8 @@ can = hundo(can,provinces,90)
 us = hundo(us,states,90)
 
 
+#%% Plot some stuff
+wrld.plot(logy=True)
+wrld.plot_bokeh.line(logy=True,figsize=(1200,800),xlim=(0,40))
+
+us.plot_bokeh.line(logy=True,figsize=(1200,800))
