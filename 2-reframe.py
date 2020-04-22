@@ -9,7 +9,7 @@ wrld[countries].max().sort_values(ascending=False)
 
 #%% Find the biggest provinces
 can.gt(90).sum().sort_values(ascending=False)
-provinces=['Alberta','Quebec','Ontario','British Columbia']
+provinces=['Alberta','Quebec','Ontario','British Columbia','Nova Scotia']
 can[provinces].max().sort_values(ascending=False)
 
 #%% Find the biggest states, the ones ahead of Alberta in days or cases
@@ -34,3 +34,5 @@ wrld.plot(logy=True)
 wrld.plot_bokeh.line(logy=True,figsize=(1200,800),xlim=(0,40))
 
 us.plot_bokeh.line(logy=True,figsize=(1200,800))
+
+can.plot_bokeh.line(logy=True,figsize=(1200,800))
