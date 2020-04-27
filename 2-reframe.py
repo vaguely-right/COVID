@@ -1,7 +1,9 @@
-#%% Find the countries that are at least four days ahead of Canada
+#%% Find the countries that are at least four days ahead of Canada or have more cases
 ndays = wrld.Canada.gt(90).sum()+4
-countries = list(wrld.max().index[wrld.gt(90).sum()>=ndays])
-countries.append('Canada')
+list1 = list(wrld.max().index[wrld.gt(90).sum()>=ndays])
+list2 = list(wrld.max().index[wrld.ge(wrld.Canada.max()).sum().gt(0)])
+countries = list(set(list1+list2))
+#countries.append('Canada')
 countries.remove('World')
 countries.remove('China')
 
