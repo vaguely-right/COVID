@@ -7,6 +7,7 @@ usd1 = getd1(us,5)
 wrldd1.plot()
 wrldd1.plot_bokeh(figsize=(1200,800))
 cand1.plot_bokeh(figsize=(1200,800))
+usd1.plot_bokeh(figsize=(1200,800))
 
 #%% Combine the cases and growth rate in a single dataframe
 comb = pd.concat([wrld.stack().to_frame(),wrldd1.stack().to_frame()],axis=1)

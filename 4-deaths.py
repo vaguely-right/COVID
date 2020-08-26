@@ -8,7 +8,7 @@ can.rename(columns={'Country/Region' : 'Country', 'Province/State' : 'Province'}
 can = can[can.Country=='Canada'].drop('Country',axis=1)
 can.set_index('Province',inplace=True)
 can = can.transpose()
-can.drop(['Grand Princess','Diamond Princess','Recovered'],axis=1,inplace=True)
+can.drop(['Grand Princess','Diamond Princess'],axis=1,inplace=True)
 can.replace(0,np.nan,inplace=True)
 
 #%% Get the world data

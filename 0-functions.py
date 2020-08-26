@@ -50,3 +50,11 @@ def getd1(df,ndays):
         frames.append(slope)   
     d1 = pd.concat(frames,axis=1)
     return d1
+
+# Plot a country, etc cumulative vs daily
+def plot_scat(ser):
+    pd.concat([ser.rename('Cumulative'),ser.diff(7).div(7).rename('7 day average')],axis=1).plot_bokeh.scatter(x='Cumulative',y='7 day average',figsize=(1200,800))
+    
+    
+    
+    
