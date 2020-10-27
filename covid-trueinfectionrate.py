@@ -21,10 +21,16 @@ rel['multiplier'] = [1 / i for i in rel.fraction_found]
 rel['multiplier'] = [min(i,10) for i in rel.multiplier]
 rel['fraction_p5'] = [np.exp(-1 * 9.5 * i) for i in rel.positivity]
 rel['fraction_p95'] = [np.exp(-1 * 8.1 * i) for i in rel.positivity]
+rel['multiplier_p5'] = [1 / i for i in rel.fraction_p5]
+rel['multiplier_p95'] = [1 / i for i in rel.fraction_p95]
+rel['multiplier_p5'] = [min(i,10) for i in rel.multiplier_p5]
+rel['multiplier_p95'] = [min(i,10) for i in rel.multiplier_p95]
+
 
 rel.plot.line(x='positivity',y=['fraction_found','fraction_p5','fraction_p95'],xticks=np.arange(0,1.05,0.05),yticks=np.arange(0,1.1,0.1))
 
-rel.plot.line(x='positivity',y='multiplier',xlim=[0,0.30],ylim=[0,10])
+rel.plot.line(x='positivity',y=['multiplier','multiplier_p5','multiplier_p95'],xlim=[0,0.30],ylim=[0,10])
+
 rel.plot.line(x='positivity',y=['fraction_found','fraction_p5','fraction_p95'],xlim=[0,0.2],ylim=[0,1.0])
 
 
@@ -57,6 +63,13 @@ df.drop([i for i in df.columns.tolist() if '_x' in i],axis=1,inplace=True)
 #sns.lineplot(data=df[df.province=='Alberta'].cases)
 #sns.lineplot(data=df,x='date',y='cases',hue='province')
 
+#%% Correct for zeros in the weekends
+(df.cases.groupby((df.cases!=df.cases.shift()).cumsum()).cumcount()+1)
+
+(df.cases==0).cumsum()
+
+y * (y.groupby((y != y.shift()).cumsum()).cumcount() + 1)
+
 #%% Get the 7 day rolling averages
 #provs = ['Alberta','BC','Ontario','Quebec']
 #df = df[df.province.isin(provs)]
@@ -69,7 +82,7 @@ df['deaths_7days'] = df.groupby('province').deaths.rolling(7).mean().tolist()
 df['active_7days'] = df.groupby('province').active_cases.rolling(7).mean().tolist()
 df['recoveries_7days'] = df.groupby('province').recovered.rolling(7).mean().tolist()
 
-
+#%%
 df[df.province=='Alberta'][['cases','cases_7days']].plot()
 
 df[df.province=='Alberta'][['testing','tests_7days']].plot()
@@ -92,6 +105,7 @@ df[df.province=='Alberta'].multiplier.plot()
 
 df['cases_est'] = df.cases_7days * df.multiplier
 
+#%%
 df[df.province=='Alberta'][['cases_est','cases_7days','positivity']].plot(secondary_y='positivity')
 df[df.province=='BC'][['cases_est','cases_7days','positivity']].plot(secondary_y='positivity')
 df[df.province=='Ontario'][['cases_est','cases_7days','positivity']].plot(secondary_y='positivity')
