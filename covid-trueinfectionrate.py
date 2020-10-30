@@ -108,7 +108,7 @@ countries = df.groupby('location').new_cases_smoothed.max().sort_values(ascendin
 countries.remove('World')
 countries.append('Canada')
 
-#countries = ['Canada','United States','United Kingdom','Spain','Italy','France','Russia','South Africa','Colombia','Chile']
+countries = ['Canada','United States','United Kingdom','Spain','Italy','France','Russia','South Africa','Colombia','Chile']
 
 df.groupby('location').new_tests_smoothed.count().sort_values(ascending=False).head(20)
 
