@@ -58,6 +58,7 @@ df.drop([i for i in df.columns.tolist() if '_x' in i],axis=1,inplace=True)
 df = df[df.province=='Alberta']
 df = df[['date','cases','testing','deaths','cumulative_cases','cumulative_deaths','active_cases','recovered']]
 df.dropna(inplace=True)
+df.reset_index(drop=True,inplace=True)
 
 #%% Fix the weekend zeros
 df['a'] = (df.cases.shift()!=0).cumsum()
@@ -97,90 +98,106 @@ df['cfr'] = np.sum([cfr[i]*((res[i]<=df.cumulative_cases) & (df.cumulative_cases
 
 
 #%% Get a rough Rt value using seven-day rolling averages
-df['rt'] = df.cases.rolling(7).mean().shift(-7)/df.cases.rolling(7).mean()
+df['rt'] = df.cases.rolling(14).mean().shift(-14)/df.cases.rolling(14).mean()
 df.rt.fillna(method='bfill',inplace=True)
 df.rt.fillna(method='ffill',inplace=True)
 
 #%% Function for going through the SEIR model
+
+def eukrd(beta,p,cfr,alpha,gamma,k,e_0,i_u_0,i_k_0,r_0,d_0):
+# Initialize all of the arrays
+    e = np.empty(shape=beta.shape)
+    e[:] = np.nan
+    d_e = np.empty(shape=beta.shape)
+    d_e[:] = np.nan
+    i_u = np.empty(shape=beta.shape)
+    i_u[:] = np.nan
+    d_i_u = np.empty(shape=beta.shape)
+    d_i_u[:] = np.nan
+    i_k = np.empty(shape=beta.shape)
+    i_k[:] = np.nan
+    d_i_k = np.empty(shape=beta.shape)
+    d_i_k[:] = np.nan
+    r = np.empty(shape=beta.shape)
+    r[:] = np.nan
+    d_r = np.empty(shape=beta.shape)
+    d_r[:] = np.nan
+    d = np.empty(shape=beta.shape)
+    d[:] = np.nan
+    d_d = np.empty(shape=beta.shape)
+    d_d[:] = np.nan
+    d_c = np.empty(shape=beta.shape)
+    d_c[:] = np.nan
+
+    # Initialize time step 0
+    e[0] = e_0
+    i_u[0] = i_u_0
+    i_k[0] = i_k_0
+    r[0] = r_0
+    d[0] = d_0
+    d_e[0] = 0
+    d_i_u[0] = 0
+    d_i_k[0] = 0
+    d_c[0] = 0
+    d_r[0] = 0
+    d_d[0] = 0
+
+# Work through the time steps
+    for t in range(1,len(beta)):
+        d_e[t] = beta[t] * ( i_u[t-1] + i_k[t-1] ) - alpha * e[t-1]
+        d_i_u[t] = alpha * e[t-1] - gamma * i_u[t-1] - np.exp(-k * p[t]) * i_u[t-1]
+        d_i_k[t] = np.exp(-k * p[t]) * i_u[t-1] - gamma * i_k[t-1]
+        d_c[t] = np.exp(-k * p[t]) * i_u[t-1]
+        d_r[t] = gamma * (i_u[t-1] + i_k[t-1] * (1-cfr[t]))
+        d_d[t] = gamma * i_k[t-1] * cfr[t]
+        e[t] = e[t-1] + d_e[t]
+        i_u[t] = i_u[t-1] + d_i_u[t]
+        i_k[t] = i_k[t-1] + d_i_k[t]
+        r[t] = r[t-1] + d_r[t]
+        d[t] = d[t-1] + d_d[t]
+
+    return e,i_u,i_k,r,d,d_e,d_i_u,d_i_k,d_c,d_r,d_d
+
+
+
+#%% Set some parameters and try running it
 # The fixed variables
 alpha = 1/2
 gamma = 1/12
-i_u_0 = 50
-e_0 = 10
 k = -8.8
 
-# The known parameters
+# The initial state
+e_0 = 50
+i_u_0 = 20
 i_k_0 = df.active_cases.iloc[0]
 r_0 = df.recovered.iloc[0]
 d_0 = df.cumulative_deaths.iloc[0]
 
+# The variable parameters
+beta = df.rt.to_numpy() * gamma
+p = df.test_positivity.to_numpy()
+p[-1] = p[-2]
+cfr = df.cfr.to_numpy()
+
 # The true values to calibrate to
-d_i_k_true = df.cases.to_numpy()
+d_c = df.cases.to_numpy()
 d_d_true = df.deaths.to_numpy()
 
-# The variable parameters
-cfr = df.cfr.to_numpy()
-p = df.test_positivity.to_numpy()
-beta = df.rt.to_numpy() * gamma
+e,i_u,i_k,r,d,d_e,d_i_u,d_i_k,d_c,d_r,d_d = eukrd(beta,p,cfr,alpha,gamma,k,e_0,i_u_0,i_k_0,r_0,d_0)
 
-# Initialize all of the arrays
-e = np.empty(shape=d_i_k_true.shape)
-e[:] = np.nan
-d_e = np.empty(shape=d_i_k_true.shape)
-d_e[:] = np.nan
-i_u = np.empty(shape=d_i_k_true.shape)
-i_u[:] = np.nan
-d_i_u = np.empty(shape=d_i_k_true.shape)
-d_i_u[:] = np.nan
-i_k = np.empty(shape=d_i_k_true.shape)
-i_k[:] = np.nan
-d_i_k = np.empty(shape=d_i_k_true.shape)
-d_i_k[:] = np.nan
-r = np.empty(shape=d_i_k_true.shape)
-r[:] = np.nan
-d_r = np.empty(shape=d_i_k_true.shape)
-d_r[:] = np.nan
-d = np.empty(shape=d_i_k_true.shape)
-d[:] = np.nan
-d_d = np.empty(shape=d_i_k_true.shape)
-d_d[:] = np.nan
-d_c = np.empty(shape=d_i_k_true.shape)
-d_c[:] = np.nan
+df_eukrd = pd.DataFrame({'e' : e,
+              'i_u' : i_u,
+              'i_k' : i_k,
+              'r' : r,
+              'd' : d,
+              'd_e' : d_e,
+              'd_i_u' : d_i_u,
+              'd_i_k' : d_i_k,
+              'd_c' : d_c,
+              'd_r' : d_r,
+              'd_d' : d_d})
 
-# Initialize time step 0
-e[0] = e_0
-i_u[0] = i_u_0
-i_k[0] = i_k_0
-r[0] = r_0
-d[0] = d_0
-d_e[0] = 0
-d_i_u[0] = 0
-d_i_k[0] = d_i_k_true[0]
-d_r[0] = 0
-d_d[0] = d_d_true[0]
-
-# Work through the time steps
-for t in range(1,len(d_i_k_true)+1):
-    d_e[t] = beta[t] * ( i_u[t-1] + i_k[t-1] ) - alpha * e[t-1]
-    d_i_u[t] = alpha * e[t-1] - gamma * i_u[t-1] - np.exp(-k * p[t]) * i_u[t-1]
-    d_i_k[t] = np.exp(-k * p[t]) * i_u[t-1] - gamma * i_k[t-1]
-    d_c[t] = np.exp(-k * p[t]) * i_u[t-1]
-    d_r[t] = gamma * (i_u[t-1] + i_k[t-1] * (1-cfr[t]))
-    d_d[t] = gamma * i_k[t-1] * cfr[t]
-    e[t] = e[t-1] + d_e[t]
-    i_u[t] = i_u[t-1] + d_i_u[t]
-    i_k[t] = i_k[t-1] + d_i_k[t]
-    r[t] = r[t-1] + d_r[t]
-    d[t] = d[t-1] + d_d[t]
-
-
-
-
-
-
-
-
-
+pd.concat([df,df_eukrd],axis=1)[['cases','d_c']].plot()
 
 
 
