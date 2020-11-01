@@ -11,23 +11,17 @@ pd.set_option('display.max_columns',16)
 mpl.rcParams['figure.figsize'] = [12.0,8.0]
 sns.set_style("whitegrid")
 
-#%% Get the world data
-infile = r'https://covid.ourworldindata.org/data/owid-covid-data.csv'
-df = pd.read_csv(infile)
+#%% Look at the relationship between positivity and infections found
+rel = pd.DataFrame()
+rel['positivity'] = [i/100 for i in range(1,100,1)]
+rel['tests_per_case'] = [1 / i for i in rel.positivity]
+rel['fraction_found'] = [np.exp(-1 * 8.80 * i) for i in rel.positivity]
+rel['multiplier'] = [1 / i for i in rel.fraction_found]
+rel['multiplier'] = [min(i,10) for i in rel.multiplier]
 
-#%% Use Italy as a test case
-df = df[df.location=='Italy']
 
-sns.lineplot(data=df,x='date',y='new_cases')
-sns.lineplot(data=df,x='date',y='new_cases_smoothed')
-sns.lineplot(data=df,x='date',y='new_tests')
-sns.lineplot(data=df,x='date',y='new_tests_smoothed')
-sns.lineplot(data=df,x='date',y='new_deaths')
-sns.lineplot(data=df,x='date',y='new_deaths_smoothed')
+rel.plot.line(x='positivity',y='fraction_found',xticks=np.arange(0,1.05,0.05),yticks=np.arange(0,1.1,0.1))
 
-df = df[['date','new_cases','new_deaths','new_tests','new_cases_smoothed','new_deaths_smoothed','new_tests_smoothed','total_cases','total_deaths']]
-
-df.dropna(inplace=True)
 
 #%% Get the Canadian data
 actfile = r'https://raw.githubusercontent.com/ishaberry/Covid19Canada/master/timeseries_prov/active_timeseries_prov.csv'
@@ -70,6 +64,9 @@ df = df[['date','cases','testing','deaths','cumulative_cases','cumulative_deaths
 
 #%% Calculate the positivity
 df['test_positivity'] = df.cases / df.testing
+
+# The first day is all tests to date; correct for that
+df.test_positivity.iloc[0] = df.cumulative_cases.iloc[0] / df.testing.iloc[0]
 
 #sns.lineplot(data=df,x='date',y='test_positivity')
 
@@ -199,10 +196,15 @@ df_eukrd = pd.DataFrame({'e' : e,
 
 pd.concat([df,df_eukrd],axis=1)[['cases','d_c']].plot()
 
+df_eukrd[['e','i_u','i_k','r','d']].plot.area()
+
+# RMSE
+np.sqrt(np.mean((df.cases.iloc[1:-1].to_numpy() - df_eukrd.d_c.iloc[1:-1].to_numpy())**2))
 
 
-
-
+#%% Make a function to optimize the betas
+def eukrd_opt_beta(beta,p,cfr,alpha,gamma,k,e_0,i_u_0,i_k_0,r_0,d_0,cases_true):
+    # Call t
 
 
 
