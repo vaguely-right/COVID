@@ -30,19 +30,25 @@ df = df[['date','new_cases','new_deaths','new_tests','new_cases_smoothed','new_d
 df.dropna(inplace=True)
 
 #%% Get the Canadian data
+actfile = r'https://raw.githubusercontent.com/ishaberry/Covid19Canada/master/timeseries_prov/active_timeseries_prov.csv'
 casesfile = r'https://raw.githubusercontent.com/ishaberry/Covid19Canada/master/timeseries_prov/cases_timeseries_prov.csv'
 mortfile = r'https://raw.githubusercontent.com/ishaberry/Covid19Canada/master/timeseries_prov/mortality_timeseries_prov.csv'
+recfile = r'https://raw.githubusercontent.com/ishaberry/Covid19Canada/master/timeseries_prov/recovered_timeseries_prov.csv'
 testsfile = r'https://raw.githubusercontent.com/ishaberry/Covid19Canada/master/timeseries_prov/testing_timeseries_prov.csv'
 
+active = pd.read_csv(actfile)
 cases = pd.read_csv(casesfile)
 deaths = pd.read_csv(mortfile)
+recoveries = pd.read_csv(recfile)
 tests = pd.read_csv(testsfile)
 
+active.rename(columns={'date_active':'date'},inplace=True)
 cases.rename(columns={'date_report':'date'},inplace=True)
 deaths.rename(columns={'date_death_report':'date'},inplace=True)
+recoveries.rename(columns={'date_recovered':'date'},inplace=True)
 tests.rename(columns={'date_testing':'date'},inplace=True)
 
-indata = [cases,tests,deaths]
+indata = [cases,tests,deaths,active,recoveries]
 
 #df = cases.merge(tests,on=['province','date'])
 
@@ -50,7 +56,7 @@ df = reduce(lambda left,right: pd.merge(left,right,on=['province','date'],how='o
 df.drop([i for i in df.columns.tolist() if '_x' in i],axis=1,inplace=True)
 
 df = df[df.province=='Alberta']
-df = df[['date','cases','testing','deaths','cumulative_cases','cumulative_deaths']]
+df = df[['date','cases','testing','deaths','cumulative_cases','cumulative_deaths','active_cases','recovered']]
 df.dropna(inplace=True)
 
 #%% Fix the weekend zeros
@@ -59,15 +65,15 @@ df = df.merge(df.groupby('a').mean().cases,left_on='a',right_index=True,suffixes
 
 df['a'] = (df.testing.shift()!=0).cumsum()
 df = df.merge(df.groupby('a').mean().testing,left_on='a',right_index=True,suffixes=['_x',''])
-df = df[['date','cases','testing','deaths','cumulative_cases','cumulative_deaths']]
+df = df[['date','cases','testing','deaths','cumulative_cases','cumulative_deaths','active_cases','recovered']]
 
 #%% Calculate the positivity
 df['test_positivity'] = df.cases / df.testing
 
-sns.lineplot(data=df,x='date',y='test_positivity')
+#sns.lineplot(data=df,x='date',y='test_positivity')
 
 #%% Determine the CFR values
-sns.lineplot(data=df,x='cumulative_cases',y='cumulative_deaths')
+#sns.lineplot(data=df,x='cumulative_cases',y='cumulative_deaths')
 df.plot.scatter('cumulative_cases','cumulative_deaths')
 
 x = df.cumulative_cases.to_numpy()
@@ -89,4 +95,109 @@ plt.show()
 cfr = cfr_fit.slopes
 df['cfr'] = np.sum([cfr[i]*((res[i]<=df.cumulative_cases) & (df.cumulative_cases<=res[i+1])) for i in range(3)],axis=0)
 
-#%% 
+
+#%% Get a rough Rt value using seven-day rolling averages
+df['rt'] = df.cases.rolling(7).mean().shift(-7)/df.cases.rolling(7).mean()
+df.rt.fillna(method='bfill',inplace=True)
+df.rt.fillna(method='ffill',inplace=True)
+
+#%% Function for going through the SEIR model
+# The fixed variables
+alpha = 1/2
+gamma = 1/12
+i_u_0 = 50
+e_0 = 10
+k = -8.8
+
+# The known parameters
+i_k_0 = df.active_cases.iloc[0]
+r_0 = df.recovered.iloc[0]
+d_0 = df.cumulative_deaths.iloc[0]
+
+# The true values to calibrate to
+d_i_k_true = df.cases.to_numpy()
+d_d_true = df.deaths.to_numpy()
+
+# The variable parameters
+cfr = df.cfr.to_numpy()
+p = df.test_positivity.to_numpy()
+beta = df.rt.to_numpy() * gamma
+
+# Initialize all of the arrays
+e = np.empty(shape=d_i_k_true.shape)
+e[:] = np.nan
+d_e = np.empty(shape=d_i_k_true.shape)
+d_e[:] = np.nan
+i_u = np.empty(shape=d_i_k_true.shape)
+i_u[:] = np.nan
+d_i_u = np.empty(shape=d_i_k_true.shape)
+d_i_u[:] = np.nan
+i_k = np.empty(shape=d_i_k_true.shape)
+i_k[:] = np.nan
+d_i_k = np.empty(shape=d_i_k_true.shape)
+d_i_k[:] = np.nan
+r = np.empty(shape=d_i_k_true.shape)
+r[:] = np.nan
+d_r = np.empty(shape=d_i_k_true.shape)
+d_r[:] = np.nan
+d = np.empty(shape=d_i_k_true.shape)
+d[:] = np.nan
+d_d = np.empty(shape=d_i_k_true.shape)
+d_d[:] = np.nan
+d_c = np.empty(shape=d_i_k_true.shape)
+d_c[:] = np.nan
+
+# Initialize time step 0
+e[0] = e_0
+i_u[0] = i_u_0
+i_k[0] = i_k_0
+r[0] = r_0
+d[0] = d_0
+d_e[0] = 0
+d_i_u[0] = 0
+d_i_k[0] = d_i_k_true[0]
+d_r[0] = 0
+d_d[0] = d_d_true[0]
+
+# Work through the time steps
+for t in range(1,len(d_i_k_true)+1):
+    d_e[t] = beta[t] * ( i_u[t-1] + i_k[t-1] ) - alpha * e[t-1]
+    d_i_u[t] = alpha * e[t-1] - gamma * i_u[t-1] - np.exp(-k * p[t]) * i_u[t-1]
+    d_i_k[t] = np.exp(-k * p[t]) * i_u[t-1] - gamma * i_k[t-1]
+    d_c[t] = np.exp(-k * p[t]) * i_u[t-1]
+    d_r[t] = gamma * (i_u[t-1] + i_k[t-1] * (1-cfr[t]))
+    d_d[t] = gamma * i_k[t-1] * cfr[t]
+    e[t] = e[t-1] + d_e[t]
+    i_u[t] = i_u[t-1] + d_i_u[t]
+    i_k[t] = i_k[t-1] + d_i_k[t]
+    r[t] = r[t-1] + d_r[t]
+    d[t] = d[t-1] + d_d[t]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
