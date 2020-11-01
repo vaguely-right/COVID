@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import pwlf
 from functools import reduce
+from scipy.optimize import differential_evolution,minimize
 
 pd.set_option('display.width',150)
 pd.set_option('display.max_columns',16)
@@ -173,11 +174,10 @@ d_0 = df.cumulative_deaths.iloc[0]
 # The variable parameters
 beta = df.rt.to_numpy() * gamma
 p = df.test_positivity.to_numpy()
-p[-1] = p[-2]
 cfr = df.cfr.to_numpy()
 
 # The true values to calibrate to
-d_c = df.cases.to_numpy()
+d_c_true = df.cases.to_numpy()
 d_d_true = df.deaths.to_numpy()
 
 e,i_u,i_k,r,d,d_e,d_i_u,d_i_k,d_c,d_r,d_d = eukrd(beta,p,cfr,alpha,gamma,k,e_0,i_u_0,i_k_0,r_0,d_0)
@@ -202,21 +202,67 @@ df_eukrd[['e','i_u','i_k','r','d']].plot.area()
 np.sqrt(np.mean((df.cases.iloc[1:-1].to_numpy() - df_eukrd.d_c.iloc[1:-1].to_numpy())**2))
 
 
-#%% Make a function to optimize the betas
-def eukrd_opt_beta(beta,p,cfr,alpha,gamma,k,e_0,i_u_0,i_k_0,r_0,d_0,cases_true):
-    # Call t
+#%% Make a function to output the model error
+def eukrd_err(beta,p,cfr,alpha,gamma,k,e_0,i_u_0,i_k_0,r_0,d_0,d_c_true):
+    # Call the function
+    e,i_u,i_k,r,d,d_e,d_i_u,d_i_k,d_c,d_r,d_d = eukrd(beta,p,cfr,alpha,gamma,k,e_0,i_u_0,i_k_0,r_0,d_0)
+    merr = np.sqrt(np.mean((d_c - d_c_true)[1:-1]**2))
+    # Only return the cases
+    return merr
 
+#%% Try optimizing for beta
+# The fixed variables
+alpha = 1/2
+gamma = 1/12
+k = -8.8
 
+# The initial state
+e_0 = 50
+i_u_0 = 20
+i_k_0 = df.active_cases.iloc[0]
+r_0 = df.recovered.iloc[0]
+d_0 = df.cumulative_deaths.iloc[0]
 
+# The variable parameters
+beta = df.rt.to_numpy() * gamma
+p = df.test_positivity.to_numpy()
+cfr = df.cfr.to_numpy()
 
+# The true values to calibrate to
+d_c_true = df.cases.to_numpy()
+d_d_true = df.deaths.to_numpy()
 
+merr = eukrd_err(beta,p,cfr,alpha,gamma,k,e_0,i_u_0,i_k_0,r_0,d_0,d_c_true)
 
+betarange = [[np.min(beta),np.max(beta)]]*len(beta)
 
+#%% Try the first 50 days
+beta_opt = minimize(eukrd_err,x0=beta,args=(p,cfr,alpha,gamma,k,e_0,i_u_0,i_k_0,r_0,d_0,d_c_true),bounds=betarange)
 
+#%% Test it
+e,i_u,i_k,r,d,d_e,d_i_u,d_i_k,d_c,d_r,d_d = eukrd(beta_opt.x,p,cfr,alpha,gamma,k,e_0,i_u_0,i_k_0,r_0,d_0)
 
+merr = eukrd_err(beta_opt.x,p,cfr,alpha,gamma,k,e_0,i_u_0,i_k_0,r_0,d_0,d_c_true)
 
+df_eukrd = pd.DataFrame({'e' : e,
+              'i_u' : i_u,
+              'i_k' : i_k,
+              'r' : r,
+              'd' : d,
+              'd_e' : d_e,
+              'd_i_u' : d_i_u,
+              'd_i_k' : d_i_k,
+              'd_c' : d_c,
+              'd_r' : d_r,
+              'd_d' : d_d})
 
+df_eukrd['r'] = beta_opt.x / gamma
 
+pd.concat([df,df_eukrd],axis=1)[['cases','d_c']].plot()
+
+pd.concat([df,df_eukrd],axis=1)[['rt','r']].plot()
+
+df_eukrd[['e','i_u','i_k','r','d']].plot.area()
 
 
 
