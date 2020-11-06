@@ -63,6 +63,8 @@ df['a'] = (df.testing.shift()!=0).cumsum()
 df = df.merge(df.groupby('a').mean().testing,left_on='a',right_index=True,suffixes=['_x',''])
 df = df[['date','cases','testing','deaths','cumulative_cases','cumulative_deaths','active_cases','recovered']]
 
+df.cases.replace(0,np.nan,inplace=True)
+df.dropna(inplace=True)
 #%% Calculate the positivity
 df['test_positivity'] = df.cases / df.testing
 
@@ -199,7 +201,7 @@ pd.concat([df,df_eukrd],axis=1)[['cases','d_c']].plot()
 df_eukrd[['e','i_u','i_k','r','d']].plot.area()
 
 # RMSE
-np.sqrt(np.mean((df.cases.iloc[1:-1].to_numpy() - df_eukrd.d_c.iloc[1:-1].to_numpy())**2))
+np.sqrt(np.mean((df.cases.iloc[1:].to_numpy() - df_eukrd.d_c.iloc[1:].to_numpy())**2))
 
 
 #%% Make a function to output the model error
@@ -236,7 +238,8 @@ merr = eukrd_err(beta,p,cfr,alpha,gamma,k,e_0,i_u_0,i_k_0,r_0,d_0,d_c_true)
 
 betarange = [[np.min(beta),np.max(beta)]]*len(beta)
 
-#%% Try the first 50 days
+#%% Try the optimization
+ndays = 14
 beta_opt = minimize(eukrd_err,x0=beta,args=(p,cfr,alpha,gamma,k,e_0,i_u_0,i_k_0,r_0,d_0,d_c_true),bounds=betarange)
 
 #%% Test it
