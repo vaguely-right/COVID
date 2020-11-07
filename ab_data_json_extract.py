@@ -122,6 +122,8 @@ df['daily_positivity'] = df.daily_cases / df.daily_tests
 import pwlf
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+mpl.rcParams['figure.figsize'] = [12.0,8.0]
 
 #%% Determine the CFR values
 #sns.lineplot(data=df,x='cumulative_cases',y='cumulative_deaths')
@@ -144,7 +146,7 @@ plt.plot(xHat, yHat, '-')
 plt.show()
 
 cfr = cfr_fit.slopes
-df['cfr'] = np.sum([cfr[i]*((res[i]<=df.cumulative_cases) & (df.cumulative_cases<=res[i+1])) for i in range(3)],axis=0)
+df['cfr'] = np.sum([cfr[i]*((res[i]<=df.cumulative_cases) & (df.cumulative_cases<=res[i+1])) for i in range(len(res)-1)],axis=0)
 
 
 
