@@ -68,6 +68,43 @@ def get_ab_data():
     df['daily_positivity'] = df.daily_cases / df.daily_tests
     return df
     
+#Function for getting Canadian data
+def get_can_data():
+    #Data locations
+    actfile = r'https://raw.githubusercontent.com/ishaberry/Covid19Canada/master/timeseries_prov/active_timeseries_prov.csv'
+    casesfile = r'https://raw.githubusercontent.com/ishaberry/Covid19Canada/master/timeseries_prov/cases_timeseries_prov.csv'
+    mortfile = r'https://raw.githubusercontent.com/ishaberry/Covid19Canada/master/timeseries_prov/mortality_timeseries_prov.csv'
+    recfile = r'https://raw.githubusercontent.com/ishaberry/Covid19Canada/master/timeseries_prov/recovered_timeseries_prov.csv'
+    testsfile = r'https://raw.githubusercontent.com/ishaberry/Covid19Canada/master/timeseries_prov/testing_timeseries_prov.csv'
+    #Read the files
+    active = pd.read_csv(actfile)
+    cases = pd.read_csv(casesfile)
+    deaths = pd.read_csv(mortfile)
+    recoveries = pd.read_csv(recfile)
+    tests = pd.read_csv(testsfile)
+    #Standardize "date" as a name
+    active.rename(columns={'date_active':'date'},inplace=True)
+    cases.rename(columns={'date_report':'date'},inplace=True)
+    deaths.rename(columns={'date_death_report':'date'},inplace=True)
+    recoveries.rename(columns={'date_recovered':'date'},inplace=True)
+    tests.rename(columns={'date_testing':'date'},inplace=True)
+    #Combine the data sources
+    indata = [cases,tests,deaths,active,recoveries]
+    df = reduce(lambda left,right: pd.merge(left,right,on=['province','date'],how='outer',suffixes=[None,'_x']),indata)
+    df.drop([i for i in df.columns.tolist() if '_x' in i],axis=1,inplace=True)
+    df = df[df.province!='Repatriated']
+    df['date'] = pd.to_datetime(df.date,dayfirst=True)
+    df = df[df.date>='2020-03-01']
+    #Fix the weekend zeros
+    df['a'] = (df.cases.shift()!=0).cumsum()
+    df = df.merge(df.groupby('a').mean().cases,left_on='a',right_index=True,suffixes=['_x',''])
+    df['a'] = (df.testing.shift()!=0).cumsum()
+    df = df.merge(df.groupby('a').mean().testing,left_on='a',right_index=True,suffixes=['_x',''])
+    df = df[['province','date','cases','testing','deaths','cumulative_cases','cumulative_deaths','active_cases','recovered']]
+    df.set_index(['province','date'],inplace=True)
+#    df.cases.replace(0,np.nan,inplace=True)
+#    df.dropna(inplace=True)
+    return df
 
 # Function for going through the EUKR model
 def eukr(beta,alpha,p,k,gamma,e_0,u_0,k_0,r_0):    
