@@ -13,6 +13,7 @@ from datetime import date
 from datetime import datetime
 from datetime import timedelta
 import pandas_bokeh
+import statsmodels.api as sm
 
 pd.set_option('display.width',150)
 pd.set_option('display.max_columns',16)
@@ -240,7 +241,6 @@ df[['daily_cases','fit_cases','p5','p95']].loc['2020-09-10':].plot_bokeh(legend=
 
 df[['daily_cases','fit_cases','p5','p95']].plot(logy=True)
 df[['daily_cases','fit_cases','p5','p95']].loc['2020-09-01':].plot()
-
 
 
 
