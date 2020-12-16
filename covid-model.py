@@ -64,8 +64,8 @@ def get_ab_data():
             pd.DataFrame(index=xdata[15],data={'current_icu':ydata[15]}),
             pd.DataFrame(index=xdata[16],data={'current_non_icu':ydata[16]}),
             pd.DataFrame(index=xdata[20],data={'rolling_hospitalized':[i*4.37 for i in ydata[20]]}),
-            pd.DataFrame(index=xdata[32],data={'daily_tested':ydata[32]}),
-            pd.DataFrame(index=xdata[33],data={'daily_tests':ydata[33]}),
+            pd.DataFrame(index=xdata[33],data={'daily_tested':ydata[33]}),
+            pd.DataFrame(index=xdata[34],data={'daily_tests':ydata[34]}),
             ],axis=1).sort_index().fillna(0)
     # Need to calculate daily cases, daily deaths, current hospitalized, daily positivity
     df['daily_cases'] = df.daily_confirmed + df.daily_probable
@@ -218,7 +218,7 @@ def make_pred(y):
 #%% Scrape, model, fit, and plot the Alberta data
 df = get_ab_data()
 
-y = np.log(df.daily_cases.replace(0,0.1).to_numpy())
+y = np.log(df.daily_cases.replace(0,1.0).to_numpy())
 cases_model,cases_fit = fit_piecewise(y,6)
 df['fit_cases'] = np.exp(cases_fit)
 
@@ -237,15 +237,44 @@ p95 = np.exp(y95)
 projdf = pd.DataFrame(index=d,data={'fit_cases':proj,'p5':p5,'p95':p95})
 df = df.append(projdf)
 
-df[['daily_cases','fit_cases','p5','p95']].loc['2020-09-10':].plot_bokeh(legend='top_left',figsize=(1200,800),number_format='0',plot_data_points=True)
+#df[['daily_cases','fit_cases','p5','p95']].loc['2020-09-10':].plot_bokeh(legend='top_left',figsize=(1200,800),number_format='0',plot_data_points=True)
 
 df[['daily_cases','fit_cases','p5','p95']].plot(logy=True)
 df[['daily_cases','fit_cases','p5','p95']].loc['2020-09-01':].plot()
 
 
+# Doubling times
+np.log(2)/cases_model.slopes
+
+# Dates of break points
+(df.index.min()+pd.to_timedelta(cases_model.fit_breaks,unit='D')).tolist()
+
+#%% Just model since June 1st (approximate low point in cases)
+df = get_ab_data()
+df = df.loc['2020-06-01':]
+
+y = np.log(df.daily_cases.replace(0,1.0).to_numpy())
+cases_model,cases_fit = fit_piecewise(y,5)
+df['fit_cases'] = np.exp(cases_fit)
+
+x = np.array(range(len(y),len(y)+7))
+d = df.index.min()+pd.to_timedelta(x,unit='D')
+yHat = cases_model.predict(x)
+proj = np.exp(yHat)
+yVar = cases_model.prediction_variance(x)
+mse = np.mean( (np.log(df.iloc[round(cases_model.fit_breaks[-2]):].fit_cases) - np.log(df.iloc[round(cases_model.fit_breaks[-2]):].daily_cases) ) **2 )
+y5 = yHat - 1.65*np.sqrt(yVar+mse)
+y95 = yHat + 1.65*np.sqrt(yVar+mse)
+p5 = np.exp(y5)
+p95 = np.exp(y95)
 
 
+projdf = pd.DataFrame(index=d,data={'fit_cases':proj,'p5':p5,'p95':p95})
+df = df.append(projdf)
 
+df[['daily_cases','fit_cases','p5','p95']].plot(logy=True)
+df[['daily_cases','fit_cases','p5','p95']].loc['2020-09-01':].plot()
 
+# Not really working.
 
 
