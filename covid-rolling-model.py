@@ -46,6 +46,16 @@ def make_prediction(Y,output='mean',alph=0.1):
     return out
 
 #%%
+# Second-order model, projected forward linearly?
+def make_second_order(Y,output='mean',alph=0.1):
+    if output not in ['mean','lower','upper','r_mean','r_lower','r_upper']:
+        print('Output type not recognized, defaulting to mean')
+        output = 'mean'
+    
+
+
+
+#%%
 df = get_ab_data()
 #df = df.loc['2020-06-01':]    
 
@@ -91,4 +101,5 @@ df['fit_cases'].iloc[-1] = mean
 df['p5'].iloc[-1] = lower
 df['p95'].iloc[-1] = upper
 
-
+df[['daily_cases','fit_cases','p5','p95']].plot(logy=True)
+df[['daily_cases','fit_cases','p5','p95']].loc['2020-09-01':].plot()
