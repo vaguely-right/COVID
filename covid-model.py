@@ -64,8 +64,8 @@ def get_ab_data():
             pd.DataFrame(index=xdata[15],data={'current_icu':ydata[15]}),
             pd.DataFrame(index=xdata[16],data={'current_non_icu':ydata[16]}),
             pd.DataFrame(index=xdata[20],data={'rolling_hospitalized':[i*4.37 for i in ydata[20]]}),
-            pd.DataFrame(index=xdata[33],data={'daily_tested':ydata[33]}),
-            pd.DataFrame(index=xdata[34],data={'daily_tests':ydata[34]}),
+#            pd.DataFrame(index=xdata[33],data={'daily_tested':ydata[33]}),
+            pd.DataFrame(index=xdata[35],data={'daily_tests':ydata[35]}),
             ],axis=1).sort_index().fillna(0)
     # Need to calculate daily cases, daily deaths, current hospitalized, daily positivity
     df['daily_cases'] = df.daily_confirmed + df.daily_probable
@@ -219,10 +219,11 @@ def make_pred(y):
 df = get_ab_data()
 
 y = np.log(df.daily_cases.replace(0,1.0).to_numpy())
-cases_model,cases_fit = fit_piecewise(y,6)
+cases_model,cases_fit = fit_piecewise(y,7)
 df['fit_cases'] = np.exp(cases_fit)
 
-x = np.array(range(len(y),len(y)+7))
+ndays = 30
+x = np.array(range(len(y),len(y)+ndays))
 d = df.index.min()+pd.to_timedelta(x,unit='D')
 yHat = cases_model.predict(x)
 proj = np.exp(yHat)
@@ -248,6 +249,9 @@ np.log(2)/cases_model.slopes
 
 # Dates of break points
 (df.index.min()+pd.to_timedelta(cases_model.fit_breaks,unit='D')).tolist()
+
+# Approximate r values
+np.exp(cases_model.slopes*3)
 
 #%% Just model since June 1st (approximate low point in cases)
 df = get_ab_data()

@@ -38,11 +38,11 @@ def make_prediction(Y,output='mean',alph=0.1):
     elif(output=='upper'):
         out = np.exp(lm.get_prediction(np.array([1,len(x)])).summary_frame(alpha=alph))['obs_ci_upper']
     elif(output=='r_mean'):
-        out = np.exp(lm.params[1])
+        out = np.exp(lm.params[1]*3)
     elif(output=='r_lower'):
-        out = np.exp(lm.conf_int(alpha=alph)[1,0])
+        out = np.exp(lm.conf_int(alpha=alph)[1,0]*3)
     elif(output=='r_upper'):
-        out = np.exp(lm.conf_int(alpha=alph)[1,1])
+        out = np.exp(lm.conf_int(alpha=alph)[1,1]*3)
     return out
 
 #%%
@@ -74,8 +74,9 @@ for ndays in range(5,14):
 
 pd.DataFrame(optn)
 
-#%%
-ndays = 11
+
+#%% Run the rolling model
+ndays = 14
 df['fit_cases'] = df.daily_cases.rolling(ndays).apply(make_prediction,kwargs={'output':'mean'}).shift(1)
 df['p5'] = df.daily_cases.rolling(ndays).apply(make_prediction,kwargs={'output':'lower'}).shift(1)
 df['p95'] = df.daily_cases.rolling(ndays).apply(make_prediction,kwargs={'output':'upper'}).shift(1)
@@ -83,6 +84,18 @@ df['r'] = df.daily_cases.rolling(ndays).apply(make_prediction,kwargs={'output':'
 df['r5'] = df.daily_cases.rolling(ndays).apply(make_prediction,kwargs={'output':'r_lower'})
 df['r95'] = df.daily_cases.rolling(ndays).apply(make_prediction,kwargs={'output':'r_upper'})
 
+
+#%% Run using a rolling average
+ndays = 14
+df['fit_cases'] = df.daily_cases.rolling(7).mean().rolling(ndays).apply(make_prediction,kwargs={'output':'mean'}).shift(1)
+df['p5'] = df.daily_cases.rolling(7).mean().rolling(ndays).apply(make_prediction,kwargs={'output':'lower'}).shift(1)
+df['p95'] = df.daily_cases.rolling(7).mean().rolling(ndays).apply(make_prediction,kwargs={'output':'upper'}).shift(1)
+df['r'] = df.daily_cases.rolling(7).mean().rolling(ndays).apply(make_prediction,kwargs={'output':'r_mean'})
+df['r5'] = df.daily_cases.rolling(7).mean().rolling(ndays).apply(make_prediction,kwargs={'output':'r_lower'})
+df['r95'] = df.daily_cases.rolling(7).mean().rolling(ndays).apply(make_prediction,kwargs={'output':'r_upper'})
+
+
+#%% Plot some results
 df[['daily_cases','fit_cases','p5','p95']].plot(logy=True)
 df[['daily_cases','fit_cases','p5','p95']].loc['2020-09-01':].plot()
 
