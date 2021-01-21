@@ -27,7 +27,8 @@ def get_ab_data():
     # Make a GET request to fetch the raw HTML content
     html_content = requests.get(url).text
     # Parse the html content
-    soup = BeautifulSoup(html_content, "lxml")
+#    soup = BeautifulSoup(html_content, "lxml")
+    soup = BeautifulSoup(html_content,'html5lib')
     # Extract the data
     data = soup.find_all('script',attrs={'type':'application/json'})
     # Extract each data series from the json
