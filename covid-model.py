@@ -83,10 +83,11 @@ def get_ab_cases():
     # Make a GET request to fetch the raw HTML content
     html_content = requests.get(url).text
     # Parse the html content
-    soup = BeautifulSoup(html_content, "lxml")
+#    soup = BeautifulSoup(html_content, "lxml")
+    soup = BeautifulSoup(html_content,'html5lib')
     # Extract the data
     data = soup.find_all('script',attrs={'type':'application/json'})
-    dat = json.loads(data[20].text)
+    dat = json.loads(data[19].text)
     ind = dat['x']['data'][0]
     date = dat['x']['data'][1]
     zone = dat['x']['data'][2]

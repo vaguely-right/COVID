@@ -76,7 +76,7 @@ pd.DataFrame(optn)
 
 
 #%% Run the rolling model
-ndays = 14
+ndays = 11
 df['fit_cases'] = df.daily_cases.rolling(ndays).apply(make_prediction,kwargs={'output':'mean'}).shift(1)
 df['p5'] = df.daily_cases.rolling(ndays).apply(make_prediction,kwargs={'output':'lower'}).shift(1)
 df['p95'] = df.daily_cases.rolling(ndays).apply(make_prediction,kwargs={'output':'upper'}).shift(1)
